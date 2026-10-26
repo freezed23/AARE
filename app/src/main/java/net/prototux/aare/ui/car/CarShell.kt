@@ -377,7 +377,7 @@ private fun NavCard(state: CarUiState, actions: CarActions, navMap: @Composable 
                 Text(if (navApps.isEmpty()) "No navigation app" else "Where to?", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (navApps.isEmpty()) "Install CoMaps or Organic Maps on the phone" else "Choose your maps app",
+                    if (navApps.isEmpty()) "Install a navigation app that supports Android Auto on the phone" else "Choose your maps app",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
