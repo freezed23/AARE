@@ -17,14 +17,15 @@ import java.security.spec.PKCS8EncodedKeySpec
  * The phone certificates offered to head units, in order.
  *
  * Head units built on Google's receiver library only accept a phone certificate issued by
- * Google; open-source and some OEM head units accept any. We always have a generated self-signed
- * one, and the user may import others (PEM certificate chain + PKCS#8 key, or a PKCS#12 file).
+ * Google; open-source and some OEM head units accept any. Release builds carry AARE's own built-in
+ * certificate, we always have a generated self-signed one, and the user may import others (PEM
+ * certificate chain + PKCS#8 key, or a PKCS#12 file).
  * When a head unit rejects the certificate during the handshake, the next connection offers the
  * next one, the way a TLS server can't know in advance what a client trusts.
  */
 class CertificateStore(private val context: Context) {
 
-    class Entry(val name: String, val identity: PhoneIdentity) {
+    class Entry(val name: String, val identity: PhoneIdentity, val removable: Boolean = true) {
         val subject: String get() = identity.certificate.subjectX500Principal.name
         val notAfter get() = identity.certificate.notAfter
         val selfSigned: Boolean get() = identity.certificate.subjectX500Principal == identity.certificate.issuerX500Principal
@@ -32,10 +33,24 @@ class CertificateStore(private val context: Context) {
 
     private val dir = File(context.filesDir, "certs").apply { mkdirs() }
 
-    /** All usable identities: imported ones first (they're the reason to import), then the generated one. */
+    /**
+     * All usable identities: imported ones first (they're the reason to import), then the one built
+     * into this build of AARE (release builds), then the generated one, which always works.
+     */
     fun entries(): List<Entry> {
         val imported = dir.listFiles { f -> f.isDirectory }.orEmpty().sortedBy { it.name }.mapNotNull { load(it) }
-        return imported + Entry("Generated (self-signed)", generated())
+        return imported + listOfNotNull(builtIn) + Entry(GENERATED, generated(), removable = false)
+    }
+
+    /** AARE's own certificate, from the release build's assets; null in builds made without it. */
+    private val builtIn: Entry? by lazy {
+        runCatching {
+            val chain = context.assets.open("$BUILT_IN_DIR/cert.pem").use { input ->
+                CertificateFactory.getInstance("X.509").generateCertificates(input).map { it as X509Certificate }
+            }
+            val key = parsePkcs8(context.assets.open("$BUILT_IN_DIR/key.pem").bufferedReader().use { it.readText() })
+            Entry(BUILT_IN, PhoneIdentity(chain.first(), key, chain.drop(1)), removable = false)
+        }.getOrNull()
     }
 
     /** Identity to offer for attempt [index] (wraps around). */
@@ -98,10 +113,14 @@ class CertificateStore(private val context: Context) {
         val chain = CertificateFactory.getInstance("X.509")
             .generateCertificates(File(d, "chain.pem").inputStream()).map { it as X509Certificate }
         val key = parsePkcs8(File(d, "key.pem").readText())
-        Entry(if (d.name == "_generated") "Generated (self-signed)" else d.name, PhoneIdentity(chain.first(), key, chain.drop(1)))
+        Entry(if (d.name == "_generated") GENERATED else d.name, PhoneIdentity(chain.first(), key, chain.drop(1)), removable = d.name != "_generated")
     }.getOrNull()
 
     companion object {
+        private const val GENERATED = "Generated (self-signed)"
+        private const val BUILT_IN = "AARE (built in)"
+        private const val BUILT_IN_DIR = "phone_identity"
+
         fun pem(type: String, der: ByteArray) =
             "-----BEGIN $type-----\n" + Base64.encodeToString(der, Base64.NO_WRAP).chunked(64).joinToString("\n") + "\n-----END $type-----\n"
 
