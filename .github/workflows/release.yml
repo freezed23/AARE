@@ -79,6 +79,8 @@ jobs:
           (cd headunit/build/install && zip -qr "$GITHUB_WORKSPACE/out/aare-headunit-$VERSION.zip" aare-headunit)
 
       - name: Publish
+        env:
+          AARE_PHONE_CERT: ${{ secrets.AARE_PHONE_CERT }}
         run: |
           cd out
           sha256sum -- * > SHA256SUMS
@@ -97,4 +99,10 @@ jobs:
 
           See the [README](https://github.com/$GITHUB_REPOSITORY#readme) for setup and compatibility.
           NOTES
+          # Which built-in phone certificate this release carries (it's renewed from time to time).
+          if [ -n "$AARE_PHONE_CERT" ]; then
+            FP=$(printf '%s\n' "$AARE_PHONE_CERT" | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2)
+            UNTIL=$(printf '%s\n' "$AARE_PHONE_CERT" | openssl x509 -noout -enddate | cut -d= -f2)
+            printf '\nBuilt-in phone certificate: SHA-256 `%s`, valid until %s.\n' "$FP" "$UNTIL" >> ../notes.md
+          fi
           gh release create "$GITHUB_REF_NAME" --title "AARE $VERSION" --notes-file ../notes.md --generate-notes -- *

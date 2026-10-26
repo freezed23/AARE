@@ -79,10 +79,10 @@ head units validate the chain. Reports from real cars are welcome (see below).
 ## What AARE does
 
 - **Its own certificates:**
-  - Release builds carry **AARE's built-in certificate**: one RSA-2048 certificate and key, the same
-    in every install (`O=AARE, CN=AARE phone`, SHA-256
-    `4D:FE:1C:68:F9:DE:0B:FB:BE:02:DF:1D:62:10:BF:E5:13:28:F0:25:1B:F6:A2:02:D6:0B:82:6E:F3:09:AB:84`,
-    valid until 2046). Like Google's, its key ships inside the app, so it identifies AARE rather than
+  - Release builds carry **AARE's built-in certificate**: one RSA-2048 certificate and key
+    (`O=AARE, CN=AARE phone`), the same in every install of a release. It's renewed from time to
+    time, and each release's notes give the SHA-256 fingerprint and expiry of the one it carries.
+    Like Google's, its key ships inside the app, so it identifies AARE rather than
     a phone, and it isn't secret. It's self-signed today; it exists so that, if head units ever
     accept certificates from other apps (a vendor or CA signing AARE's), releases can carry a signed
     one without changing anything else. Builds you make yourself get it only when `AARE_PHONE_CERT`
