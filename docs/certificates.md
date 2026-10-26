@@ -78,13 +78,24 @@ head units validate the chain. Reports from real cars are welcome (see below).
 
 ## What AARE does
 
-- **Its own certificate:** on first launch AARE generates a self-signed certificate and key. Head
-  units that don't check the phone accept it; Google-library head units refuse it.
+- **Its own certificates:**
+  - Release builds carry **AARE's built-in certificate**: one RSA-2048 certificate and key, the same
+    in every install (`O=AARE, CN=AARE phone`, SHA-256
+    `4D:FE:1C:68:F9:DE:0B:FB:BE:02:DF:1D:62:10:BF:E5:13:28:F0:25:1B:F6:A2:02:D6:0B:82:6E:F3:09:AB:84`,
+    valid until 2046). Like Google's, its key ships inside the app, so it identifies AARE rather than
+    a phone, and it isn't secret. It's self-signed today; it exists so that, if head units ever
+    accept certificates from other apps (a vendor or CA signing AARE's), releases can carry a signed
+    one without changing anything else. Builds you make yourself get it only when `AARE_PHONE_CERT`
+    and `AARE_PHONE_KEY` (PEM certificate, PEM PKCS#8 key) are set in the environment.
+  - On first launch AARE also **generates a self-signed certificate** and key on the phone. It's the
+    last fallback, and the only one in builds without the built-in certificate.
+  - Head units that don't check the phone accept either; Google-library head units refuse both.
 - **Importing a certificate:** under *Advanced > Phone certificates* you can import a certificate
   chain and key (PEM, or a PKCS#12 file) that you are entitled to use. **AARE does not ship,
   download or extract Google's certificate or key**, and this repository doesn't explain how to
   get them.
-- **Fallback order:** with several certificates, AARE offers them in turn. When a head unit
+- **Fallback order:** imported certificates first, then the built-in one, then the generated one;
+  AARE offers them in turn. When a head unit
   refuses one (a failed handshake, or a non-zero `AUTH_COMPLETE`), the next connection offers
   the next one, and the connection log says so.
 - **The head unit's certificate:** AARE doesn't require a Google-issued head-unit certificate

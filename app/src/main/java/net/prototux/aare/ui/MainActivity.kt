@@ -890,7 +890,7 @@ private fun CertificatesCard(certs: CertificateStore, state: ProjectionService.S
                     Text("${e.subject.take(60)} · until ${DateFormat.getDateInstance().format(e.notAfter)}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (!e.selfSigned || e.name != "Generated (self-signed)") TextButton(onClick = { certs.remove(e); entries = certs.entries() }) { Text("Remove") }
+                if (e.removable) TextButton(onClick = { certs.remove(e); entries = certs.entries() }) { Text("Remove") }
             }
         }
         TextButton(onClick = { certPicker.launch(arrayOf("*/*")) }) { Text("Import certificate…") }
