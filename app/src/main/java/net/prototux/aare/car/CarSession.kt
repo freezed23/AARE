@@ -135,6 +135,10 @@ class CarSession(
     @Volatile var videoDescription: String = ""
         private set
 
+    /** True only for transport/version failures before the HU's initial request. */
+    @Volatile var failedBeforeVersion: Boolean = false
+        private set
+
     fun start() {
         // The head unit is waiting for our version answer: start the protocol before the UI work.
         aap.start()
@@ -244,6 +248,7 @@ class CarSession(
     private var pausedByCar = false
 
     override fun onClosed(session: AapSession, reason: String, error: Throwable?) {
+        failedBeforeVersion = session.closedDuring == AapSession.State.VERSION && error != null
         val rejected = session.certificateRejected
         val refusal = session.pinRefusal
         main.post {

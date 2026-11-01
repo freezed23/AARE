@@ -231,8 +231,12 @@ class ProjectionService : Service() {
             if (destroyed || this@ProjectionService.session !== session) return
             this@ProjectionService.session = null
             releaseWakeLock()
-            if (lanSession && pinRefusal != null && tcpServerLan) {
-                // Refused at the handshake, before any car screen: keep listening so it can reconnect after Trust.
+            if (lanSession && tcpServerLan && (pinRefusal != null || session.failedBeforeVersion)) {
+                // A version timeout/read failure has not consumed a projection session.
+                // Keep the already-bound listener available for the proxy's fresh retry,
+                // just as for a certificate awaiting Trust. Explicit Stop has no error
+                // and still consumes one-shot LAN mode.
+                log("head unit server: keeping LAN access for pre-session retry")
                 lanSession = false
                 settings.headUnitServerLan = true
             } else if (lanSession) {
