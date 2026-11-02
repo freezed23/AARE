@@ -100,6 +100,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.prototux.aare.LogExport
 import net.prototux.aare.DiagLog
 import net.prototux.aare.Settings
 import net.prototux.aare.audio.CaptureMethod
@@ -937,14 +938,47 @@ private fun displayName(ctx: Context, uri: Uri): String =
 
 @Composable
 private fun LogCard() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val log by DiagLog.lines.collectAsState()
-    if (log.isEmpty()) return
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) {
+            busy = true
+            scope.launch {
+                status = runCatching {
+                    withContext(Dispatchers.IO) { LogExport.writeToUri(ctx, uri) }
+                    "Log saved"
+                }.getOrElse { "Save failed: ${it.javaClass.simpleName}" }
+                busy = false
+            }
+        }
+    }
     Section("Connection log") {
+        Text("Export connection events and optional TBT/lane JSONL. Route text may reveal personal places. Review before sharing.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(enabled = !busy, onClick = {
+                if (Build.VERSION.SDK_INT < 29) picker.launch(LogExport.fileName())
+                else {
+                    busy = true
+                    scope.launch {
+                        status = runCatching {
+                            val name = withContext(Dispatchers.IO) { LogExport.saveToDownloads(ctx) }
+                            "Saved to Downloads/$name"
+                        }.getOrElse { "Save failed: ${it.javaClass.simpleName}" }
+                        busy = false
+                    }
+                }
+            }) { Text(if (busy) "Saving…" else "Save logs to Downloads") }
+            if (log.isNotEmpty()) TextButton(onClick = { DiagLog.clear() }) { Text("Clear") }
+        }
+        status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         log.takeLast(40).forEach {
             Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        TextButton(onClick = { DiagLog.clear() }) { Text("Clear") }
     }
 }
 
