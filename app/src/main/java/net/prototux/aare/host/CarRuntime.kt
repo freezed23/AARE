@@ -443,6 +443,11 @@ class CarRuntime(
         }
         ui.apps.clear()
         ui.apps.addAll(entries)
+        // KHUD fork: open the KHUD app full screen once per session.
+        if (!khudOpened) {
+            entries.firstOrNull { net.prototux.aare.khud.KhudFork.isKhud(it.packageName) && it.kind != CarAppKind.EXIT }
+                ?.let { khudOpened = true; actions.openApp(it) }
+        }
         // Restore the last navigation and media apps, so the dashboard isn't empty. Not a navigation app that
         // finished itself: its map card would stay blank instead of offering the picker.
         if (ui.activeNavAppId == null) {
@@ -537,6 +542,9 @@ class CarRuntime(
     }
 
     /** The connection the car screen draws: like [connection], but doesn't start an app that finished itself again. */
+    /** KHUD fork: the KHUD app was opened automatically in this session. */
+    private var khudOpened = false
+
     private fun shownConnection(id: String): CarAppConnection? = if (id in finished) connections[id] else connection(id)
 
     private fun navConnection(): CarAppConnection? {
@@ -690,6 +698,14 @@ class CarRuntime(
         val mediaApps by media.apps.collectAsState()
         CarTheme(night = ui.night, theme = ui.theme) {
             CompositionLocalProvider(LocalCarDimens provides LocalCarDimens.current) {
+                // KHUD fork: the KHUD app full screen, without the rail or any AARE chrome.
+                val khud = (ui.screen as? CarScreen.App)?.let { ui.app(it.appId) }
+                    ?.takeIf { net.prototux.aare.khud.KhudFork.isKhud(it.packageName) }
+                val khudConn = khud?.let { shownConnection(it.id) }
+                if (khudConn != null) {
+                    CarAppScreen(khudConn, this, modifier)
+                    return@CompositionLocalProvider
+                }
                 CarShell(
                     state = ui,
                     actions = actions,

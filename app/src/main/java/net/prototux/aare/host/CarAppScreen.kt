@@ -41,6 +41,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -67,6 +69,15 @@ fun CarAppScreen(conn: CarAppConnection, runtime: CarRuntime, modifier: Modifier
         onDispose { runtime.releaseVisible(conn) }
     }
     val host = remember(conn) { ConnectionTemplateHost(conn, runtime) }
+    // KHUD fork: the KHUD app draws everything on its surface; no template UI over it.
+    if (net.prototux.aare.khud.KhudFork.isKhud(conn.info.packageName)) {
+        Box(modifier) {
+            host.MapSurface(Modifier.fillMaxSize())
+            // Taps go to the KHUD app (corner button, split panel, or a tap on the mirrored Pro2 screen).
+            Box(Modifier.fillMaxSize().pointerInput(conn) { detectTapGestures(onTap = { conn.click(it.x, it.y) }) })
+        }
+        return
+    }
     Box(modifier) {
         val template = conn.template
         // The map surface outlives template changes: recreating it with each new template (as a
