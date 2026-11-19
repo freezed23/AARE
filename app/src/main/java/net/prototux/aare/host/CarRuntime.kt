@@ -690,7 +690,6 @@ class CarRuntime(
         val mediaApps by media.apps.collectAsState()
         CarTheme(night = ui.night, theme = ui.theme) {
             CompositionLocalProvider(LocalCarDimens provides LocalCarDimens.current) {
-              androidx.compose.foundation.layout.Box(Modifier) {
                 CarShell(
                     state = ui,
                     actions = actions,
@@ -723,10 +722,6 @@ class CarRuntime(
                     },
                     modifier = modifier,
                 )
-                // KHUD fork: vehicle info from the KHUD Carlink app over every screen,
-                // inside the same visible area as the shell.
-                net.prototux.aare.khud.KhudVehicleOverlay(modifier)
-              }
             }
         }
     }
