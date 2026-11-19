@@ -544,7 +544,8 @@ class CarSession(
         // Pass the declared panel as-is (0 when the head unit declares none); the mapper resolves
         // the source resolution, including 0x0, visible-pixel and under-declared panels.
         val inputCh = touchSize
-        touch = TouchMapper(inputCh?.first ?: 0, inputCh?.second ?: 0, layout)
+        touch = TouchMapper(inputCh?.first ?: 0, inputCh?.second ?: 0, layout, vehicleOverride?.touchSpace)
+            .also { if (it.frameSpace) DiagLog.add("touch: panel ${inputCh?.first}x${inputCh?.second} read as whole-frame coordinates") }
     }
 
     /** An encoder that fails again and again ends the session rather than restart forever. */

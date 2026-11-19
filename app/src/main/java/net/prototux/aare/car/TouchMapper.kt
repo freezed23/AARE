@@ -22,7 +22,12 @@ import kotlin.math.abs
  *  - otherwise the declared panel, scaled into the visible area — correct whether the panel is
  *    smaller than the display (upscale) or larger (downscale);
  *  - plus a runtime guard: a coordinate past the declared panel proves the panel is too small, so
- *    that axis falls back to the visible area.
+ *    that axis falls back to the visible area;
+ *  - a panel exactly the size of the whole video frame while the frame has margins: the head unit
+ *    reports frame coordinates, margins included (e.g. a K20 Pro 1920x720 aftermarket screen: a
+ *    1280x720 frame, 120 px top/bottom margins, a declared 1280x720 panel). Scaling it into the
+ *    visible area pulled taps toward the middle; these map 1:1 into the frame instead. A
+ *    vehicles.json `touchSpace` ("frame" or "visible") forces either reading.
  *
  * Output is clamped to the visible area so a stray report never dispatches off the surface.
  */
@@ -30,11 +35,20 @@ class TouchMapper(
     touchWidth: Int,
     touchHeight: Int,
     private val layout: ProjectionLayout,
+    touchSpace: String? = null,
 ) {
     private val visW = layout.visibleWidth.coerceAtLeast(1)
     private val visH = layout.visibleHeight.coerceAtLeast(1)
     private val declX = touchWidth
     private val declY = touchHeight
+
+    /** Touches are in whole-frame coordinates, margins included (see the class comment). */
+    val frameSpace: Boolean = when (touchSpace?.lowercase()) {
+        "frame" -> touchWidth > 0 && touchHeight > 0
+        "visible" -> false
+        else -> touchWidth == layout.width && touchHeight == layout.height &&
+            (touchWidth != visW || touchHeight != visH)
+    }
 
     /** The declared panel is larger than, but the same shape as, the visible area: visible-area pixels. */
     private val visiblePixels = touchWidth > visW && touchHeight > visH &&
@@ -52,14 +66,17 @@ class TouchMapper(
 
     /** A coordinate past the declared panel means the panel is too small: fall back to the visible area. */
     internal fun observe(x: Int, y: Int) {
+        if (frameSpace) return
         if (declX > 0 && srcX == declX && x > declX) srcX = visW
         if (declY > 0 && srcY == declY && y > declY) srcY = visH
     }
 
-    internal fun mapX(x: Int): Float = (x * (visW.toFloat() / srcX) + layout.marginLeft)
+    internal fun mapX(x: Int): Float = (if (frameSpace) x * (layout.width.toFloat() / declX)
+        else x * (visW.toFloat() / srcX) + layout.marginLeft)
         .coerceIn(layout.marginLeft.toFloat(), (layout.marginLeft + visW).toFloat())
 
-    internal fun mapY(y: Int): Float = (y * (visH.toFloat() / srcY) + layout.marginTop)
+    internal fun mapY(y: Int): Float = (if (frameSpace) y * (layout.height.toFloat() / declY)
+        else y * (visH.toFloat() / srcY) + layout.marginTop)
         .coerceIn(layout.marginTop.toFloat(), (layout.marginTop + visH).toFloat())
 
     fun map(e: TouchEvent): MotionEvent? {

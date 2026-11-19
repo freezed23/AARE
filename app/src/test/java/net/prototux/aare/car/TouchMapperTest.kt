@@ -92,4 +92,40 @@ class TouchMapperTest {
         assertEquals(1000f, m.mapX(1200), 0.001f)    // beyond the right edge clamps to it
         assertTrue(m.mapX(-20) >= 0f)                // never negative
     }
+
+    /**
+     * K20 Pro 1920x720 aftermarket screen (owner log 2026-11-19): a 1280x720 frame with 120 px
+     * top/bottom margins and a declared 1280x720 panel. Taps were pulled toward the middle when the
+     * panel was scaled into the 1280x480 visible area; the unit reports whole-frame coordinates.
+     */
+    @Test
+    fun panelEqualToFrameWithMarginsIsFrameSpace() {
+        val m = TouchMapper(1280, 720, ProjectionLayout.of(1280, 720, 0, 240, null, null))
+        assertTrue(m.frameSpace)
+        assertEquals(640f, m.mapX(640), 0.001f)
+        assertEquals(360f, m.mapY(360), 0.001f)
+        assertEquals(150f, m.mapY(150), 0.001f)      // was 150 * 480/720 + 120 = 220
+        assertEquals(570f, m.mapY(570), 0.001f)      // was 500
+        assertEquals(120f, m.mapY(10), 0.001f)       // inside the top margin: clamped to the visible area
+        assertEquals(600f, m.mapY(710), 0.001f)
+    }
+
+    @Test
+    fun touchSpaceOverrideForcesEitherReading() {
+        val layout = ProjectionLayout.of(1280, 720, 0, 240, null, null)
+        val visible = TouchMapper(1280, 720, layout, "visible")
+        assertEquals(false, visible.frameSpace)
+        assertEquals(220f, visible.mapY(150), 0.001f)
+        val frame = TouchMapper(1920, 1080, ProjectionLayout.of(1920, 1080, 0, 360, null, null), "frame")
+        assertTrue(frame.frameSpace)
+        assertEquals(540f, frame.mapY(540), 0.001f)
+    }
+
+    /** No margins: the frame is the visible area, so nothing changes. */
+    @Test
+    fun panelEqualToFrameWithoutMarginsIsUnchanged() {
+        val m = TouchMapper(1280, 720, ProjectionLayout.of(1280, 720, 0, 0, null, null))
+        assertEquals(false, m.frameSpace)
+        assertEquals(360f, m.mapY(360), 0.001f)
+    }
 }

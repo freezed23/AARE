@@ -22,6 +22,8 @@ data class VehicleOverride(
     val openServices: Set<String>? = null,
     /** Whether to send SETUP on the microphone channel when it opens (AARE's default: yes). */
     val micSetup: Boolean? = null,
+    /** How the head unit's touches are expressed: "frame" (whole video, margins included) or "visible". */
+    val touchSpace: String? = null,
 ) {
     /** These overrides, with [base]'s for every field left unset: a user rule over a built-in one. */
     fun over(base: VehicleOverride?): VehicleOverride = if (base == null) this else VehicleOverride(
@@ -33,6 +35,7 @@ data class VehicleOverride(
         skipServices = skipServices ?: base.skipServices,
         openServices = openServices ?: base.openServices,
         micSetup = micSetup ?: base.micSetup,
+        touchSpace = touchSpace ?: base.touchSpace,
     )
 
     fun skips(kind: String): Boolean = skipServices.orEmpty().any { matchesKind(it, kind) }
@@ -121,6 +124,7 @@ object VehicleOverrides {
                     maxHeight = int(a, "maxHeight"), prefer60fps = bool(a, "prefer60fps"),
                     skipServices = strings(a, "skipServices"), openServices = strings(a, "openServices"),
                     micSetup = bool(a, "micSetup"),
+                    touchSpace = str(a, "touchSpace")?.lowercase()?.takeIf { it == "frame" || it == "visible" },
                 ),
             )
         }
@@ -137,7 +141,7 @@ object VehicleOverrides {
               "match": { "make": "", "model": "", "name": "" },
               "apply": {
                 "dpi": 160, "widthMargin": 0, "heightMargin": 0, "maxHeight": 1080, "prefer60fps": true,
-                "skipServices": [], "openServices": [], "micSetup": true
+                "skipServices": [], "openServices": [], "micSetup": true, "touchSpace": ""
               }
             }
           ]
